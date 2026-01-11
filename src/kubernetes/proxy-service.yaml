@@ -19,7 +19,7 @@ spec:
         - name: dockerconfigjson
       containers:
         - name: proxy-service
-          image: ghcr.io/<YOUR_GITHUB_USERNAME>/<YOUR_REPO>/proxy-service:latest
+          image: ghcr.io/yury-z11/architecture-cinemaabyss/proxy-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -56,3 +56,4 @@ spec:
     - port: 80
       targetPort: 8000
   type: ClusterIP
+
