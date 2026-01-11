@@ -122,15 +122,15 @@ services:
       dockerfile: Dockerfile
     container_name: cinemaabyss-proxy-service
     depends_on:
-    #  - monolith
-    #  - movies-service
-    #  - events-service
-    monolith:
-      condition: service_healthy
-    movies-service:
-      condition: service_healthy
-    events-service:
-      condition: service_started  
+      - monolith
+      - movies-service
+      - events-service
+    #monolith:
+    #  condition: service_healthy
+    #movies-service:
+    #  condition: service_healthy
+    #events-service:
+    #  condition: service_started  
     ports:
       - "8000:8000"
     environment:
