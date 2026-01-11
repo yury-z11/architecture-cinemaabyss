@@ -33,7 +33,8 @@ database:
 monolith:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/monolith
+    #repository: ghcr.io/db-exp/cinemaabysstest/monolith
+    repository: ghcr.io/yury-z11/architecture-cinemaabyss/monolith
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -53,7 +54,8 @@ monolith:
 proxyService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/proxy-service
+    #repository: ghcr.io/db-exp/cinemaabysstest/proxy-service
+    repository: ghcr.io/yury-z11/architecture-cinemaabyss/proxy-service
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -73,7 +75,8 @@ proxyService:
 moviesService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/movies-service
+    #repository: ghcr.io/db-exp/cinemaabysstest/movies-service
+    repository: ghcr.io/yury-z11/architecture-cinemaabyss/movies-service
     tag: latest
     pullPolicy: Always
   replicas: 1
@@ -93,7 +96,8 @@ moviesService:
 eventsService:
   enabled: true
   image:
-    repository: ghcr.io/db-exp/cinemaabysstest/events-service
+    #repository: ghcr.io/db-exp/cinemaabysstest/events-service
+    repository: ghcr.io/yury-z11/architecture-cinemaabyss/events-service
     tag: latest
     pullPolicy: Always
   replicas: 1
