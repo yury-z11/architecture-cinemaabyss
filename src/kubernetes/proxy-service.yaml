@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy-service
+  namespace: cinemaabyss
+  labels:
+    app: proxy-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proxy-service
+  template:
+    metadata:
+      labels:
+        app: proxy-service
+    spec:
+      imagePullSecrets:
+        - name: dockerconfigjson
+      containers:
+        - name: proxy-service
+          image: ghcr.io/<YOUR_GITHUB_USERNAME>/<YOUR_REPO>/proxy-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PORT
+              value: "8000"
+          envFrom:
+            - configMapRef:
+                name: cinemaabyss-config
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy-service
+  namespace: cinemaabyss
+  labels:
+    app: proxy-service
+spec:
+  selector:
+    app: proxy-service
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: ClusterIP
