@@ -19,7 +19,7 @@ spec:
         - name: dockerconfigjson
       containers:
         - name: events-service
-          image: ghcr.io/<YOUR_GITHUB_USERNAME>/<YOUR_REPO>/events-service:latest
+          image: ghcr.io/yury-z11/architecture-cinemaabyss/events-service:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8082
@@ -43,3 +43,4 @@ spec:
     - port: 8082
       targetPort: 8082
   type: ClusterIP
+
