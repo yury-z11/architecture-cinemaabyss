@@ -1,0 +1,44 @@
+@startuml cinemaabyss-to-be-container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title CinemaAbyss — To-Be (C4 Container)
+
+Person(user, "Пользователь", "Web / Mobile / Smart TV")
+
+System_Boundary(cinemaabyss, "CinemaAbyss") {
+  Container(proxy, "proxy-service (API Gateway)", "Go", "Единая точка входа. Strangler Fig для /api/movies.")
+  Container(monolith, "monolith", "Go", "Legacy монолит: users, payments, subscriptions и часть movies.")
+  Container(movies, "movies-service", "Go", "Микросервис метаданных фильмов (новая реализация /api/movies).")
+  Container(events, "events-service", "Go", "MVP событий: REST → Kafka (produce) + consumer логирует обработку.")
+
+  ContainerDb(postgres, "PostgreSQL", "PostgreSQL", "База данных (на текущем этапе общая).")
+  Container(kafka, "Kafka", "Kafka", "Топики: movie-events, user-events, payment-events.")
+  Container(zoo, "Zookeeper", "Zookeeper", "Координация Kafka.")
+  Container(kafkaui, "Kafka UI", "Web UI", "Просмотр топиков/сообщений (локально: http://localhost:8090).")
+}
+
+System_Ext(reco, "Рекомендательная система", "Внешняя система подборок")
+System_Ext(partners, "Внешние партнёры", "Лояльность/маркетплейсы/платежи и т.п.")
+
+Rel(user, proxy, "HTTPS REST", "public")
+Rel(proxy, monolith, "HTTP REST", "internal")
+Rel(proxy, movies, "HTTP REST", "internal")
+Rel(proxy, events, "HTTP REST", "internal (опционально)")
+
+Rel(monolith, postgres, "SQL", "5432")
+Rel(movies, postgres, "SQL", "5432")
+
+Rel(events, kafka, "produce/consume", "9092")
+Rel(kafka, zoo, "coordination", "2181")
+Rel(kafkaui, kafka, "inspect", "9092")
+
+Rel(monolith, reco, "HTTP", "external")
+Rel(monolith, partners, "HTTP", "external")
+
+note right of proxy
+Strangler Fig:
+- GRADUAL_MIGRATION=false -> /api/movies в монолит
+- GRADUAL_MIGRATION=true  -> /api/movies частично/полностью в movies-service по MOVIES_MIGRATION_PERCENT
+end note
+
+@enduml
