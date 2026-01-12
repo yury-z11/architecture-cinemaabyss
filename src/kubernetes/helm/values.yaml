@@ -187,3 +187,7 @@ config:
   # Strangler Fig configuration
   gradualMigration: "true"
   moviesMigrationPercent: "100"
+
+dockerconfigsecret:
+  enabled: false
+  dockerconfigjson: ""
