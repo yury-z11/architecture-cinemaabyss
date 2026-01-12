@@ -44,11 +44,11 @@ spec:
         #    cpu: "100m"
         #    memory: "128Mi"
         requests:
-          cpu: 50m
+          cpu: 10m
           memory: 64Mi
         limits:
           cpu: 100m
-          memory: 128Mi
+          memory: 256Mi
         readinessProbe:
           httpGet:
             path: /api/movies/health
