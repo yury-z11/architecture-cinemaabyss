@@ -18,11 +18,17 @@ database:
     tag: 14
     pullPolicy: IfNotPresent
   resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
+  #  limits:
+  #№    cpu: 1000m
+  #    memory: 1Gi
+  #  requests:
+  #    cpu: 500m
+  #    memory: 512Mi
     requests:
-      cpu: 500m
+      cpu: 10m
+      memory: 128Mi
+    limits:
+      cpu: 200m
       memory: 512Mi
   persistence:
     enabled: true
