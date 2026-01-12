@@ -3,7 +3,7 @@
 ## Артефакты
 - Диаграмма To-Be (C4 Container): [docs/architecture/to-be-container.puml](docs/architecture/to-be-container.puml)
 - Скриншоты проверок: [docs/screenshots/](docs/screenshots/)
-- PR (cinema -> main): <ВСТАВЬ ССЫЛКУ НА PR В СВОЙ РЕПОЗИТОРИЙ>
+- PR (cinema -> main): (https://github.com/yury-z11/architecture-cinemaabyss/pull/1)
 
 # Задание 1
 
