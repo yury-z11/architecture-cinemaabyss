@@ -59,6 +59,11 @@
 Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman 
 Приложите скриншот тестов и скриншот состояния топиков Kafka из UI http://localhost:8090 
 
+"Типовая ошибка Kafka ClusterId":
+
+Kafka (CrashLoopBackOff / InconsistentClusterIdException): при переустановках в PVC Kafka/Zookeeper иногда остаётся старый clusterId, из-за чего kafka-0 падает с InconsistentClusterIdException. 
+Для восстановления стенда сбрасываю state Kafka (удаляю PVC kafka-data и zookeeper-data) и пересоздаю ресурсы Kafka; PVC Postgres не трогаю.
+
 # Задание 3
 
 Команда начала переезд в Kubernetes для лучшего масштабирования и повышения надежности. 
