@@ -28,6 +28,14 @@ spec:
               value: "8082"
             - name: KAFKA_BROKERS
               value: "kafka:9092"
+          
+          resources:
+            requests:
+              cpu: 5m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 128Mi
 ---
 apiVersion: v1
 kind: Service
