@@ -29,6 +29,15 @@ spec:
           envFrom:
             - configMapRef:
                 name: cinemaabyss-config
+          
+          resources:
+            requests:
+              cpu: 5m
+              memory: 32Mi
+            limits:
+              cpu: 50m
+              memory: 128Mi
+          
           readinessProbe:
             httpGet:
               path: /health
