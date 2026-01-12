@@ -91,10 +91,15 @@ services:
       PORT: 8081
       DB_CONNECTION_STRING: postgres://postgres:postgres_password@postgres:5432/cinemaabyss?sslmode=disable
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/health >/dev/null 2>&1 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8081/api/movies/health >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    #healthcheck:
+    #  test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/health >/dev/null 2>&1 || exit 1"]
+    #  interval: 10s
+    #  timeout: 5s
+    #  retries: 5
     networks:
       - cinemaabyss-network
 
