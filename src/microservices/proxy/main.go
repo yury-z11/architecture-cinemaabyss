@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
