@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"math/rand"
 )
 
 // Короткий JSON для ошибок апстрима
@@ -29,6 +30,9 @@ func main() {
 
 	gradual := strings.ToLower(env("GRADUAL_MIGRATION", "true")) == "true"
 	percent := clampPercent(env("MOVIES_MIGRATION_PERCENT", "0"))
+
+	// Seed for per-request canary routing (needed for MOVIES_MIGRATION_PERCENT)
+	rand.Seed(time.Now().UnixNano())
 
 	monolithProxy := newProxy(monolith)
 	moviesProxy := newProxy(movies)
@@ -84,12 +88,17 @@ func chooseMovies(r *http.Request, gradual bool, percent int, monolith, movies h
 		return movies
 	}
 
-	// Детерминированно: одинаковый клиент стабильно попадает в один bucket (тесты не “скачут”)
-	ip := clientIP(r)
-	key := fmt.Sprintf("%s|%s", ip, r.URL.Path)
-	b := bucket100(key)
+	// 1) Если есть id в query — детерминированно (удобно для воспроизводимости)
+	if id := strings.TrimSpace(r.URL.Query().Get("id")); id != "" {
+		b := bucket100("id=" + id)
+		if b < percent {
+			return movies
+		}
+		return monolith
+	}
 
-	if b < percent {
+	// 2) Иначе — распределяем per-request (реально даёт 50/50 даже при одинаковом client IP)
+	if rand.Intn(100) < percent {
 		return movies
 	}
 	return monolith
