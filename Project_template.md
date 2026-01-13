@@ -96,6 +96,24 @@ curl http://localhost:8000/api/movies
 Скриншоты: см. docs/screenshots/
  (docker compose up + итог newman).
 
+ ### Исправление замечания ревьюера по MOVIES_MIGRATION_PERCENT
+
+Замечание: при `MOVIES_MIGRATION_PERCENT=50` весь трафик уходил только в новый сервис.
+
+Причина: в среде Docker/Codespaces client IP для всех запросов одинаковый (NAT), а распределение было детерминированным по `clientIP + path`, поэтому все запросы попадали в один bucket.
+
+Исправление: обновил алгоритм в `src/microservices/proxy/main.go`:
+- если есть `id` в query → детерминированно по `id` (стабильно)
+- иначе → per-request распределение через `rand.Intn(100)`
+
+Проверка:
+1) В `docker-compose.yml` выставить `GRADUAL_MIGRATION=true` и `MOVIES_MIGRATION_PERCENT=50`
+2) Пересобрать proxy:
+
+docker compose up -d --build proxy-service
+
+Скриншоты: см. docs/screenshots/ скрины 12 и 13 - при значении MOVIES_MIGRATION_PERCENT=50 - в логах информация и в старом и в новом сервисе.
+
 ### 2. Kafka
  Вам как архитектуру нужно также проверить гипотезу насколько просто реализовать применение Kafka в данной архитектуре.
 
