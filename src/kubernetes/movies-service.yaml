@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: movies-service
-        image: ghcr.io/db-exp/cinemaabysstest/movies-service:latest
+        image: ghcr.io/yury-z11/architecture-cinemaabyss/movies-service:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8081
@@ -37,12 +37,18 @@ spec:
         - secretRef:
             name: cinemaabyss-secrets
         resources:
-          limits:
-            cpu: "300m"
-            memory: "256Mi"
+        #  limits:
+        #    cpu: "300m"
+        #    memory: "256Mi"
+        #  requests:
+        #    cpu: "100m"
+        #    memory: "128Mi"
           requests:
-            cpu: "100m"
-            memory: "128Mi"
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 256Mi
         readinessProbe:
           httpGet:
             path: /api/movies/health

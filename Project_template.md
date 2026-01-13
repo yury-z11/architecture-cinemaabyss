@@ -1,11 +1,16 @@
 ## Изучите [README.md](.\README.md) файл и структуру проекта.
 
+## Артефакты
+- Диаграмма To-Be (C4 Container): [docs/architecture/to-be-container.puml](docs/architecture/to-be-container.puml)
+- Скриншоты проверок: [docs/screenshots/](docs/screenshots/)
+- PR (cinema -> main): (https://github.com/yury-z11/architecture-cinemaabyss/pull/1)
+
 # Задание 1
 
 1. Спроектируйте to be архитектуру КиноБездны, разделив всю систему на отдельные домены и организовав интеграционное взаимодействие и единую точку вызова сервисов.
 Результат представьте в виде контейнерной диаграммы в нотации С4.
 Добавьте ссылку на файл в этот шаблон
-[ссылка на файл](ссылка)
+[docs/architecture/to-be-container.puml](docs/architecture/to-be-container.puml)
 
 # Задание 2
 
@@ -46,6 +51,68 @@
    ```
 - Протестируйте постепенный переход, изменив переменную окружения MOVIES_MIGRATION_PERCENT в файле docker-compose.yml.
 
+### Что сделано
+Реализован `proxy-service` в `./src/microservices/proxy` как единая точка входа (API Gateway) и применён паттерн Strangler Fig для `/api/movies`.
+
+Роутинг:
+- `GET /health` — healthcheck (200 OK)
+- `GET/POST /api/users*` — проксирование в `monolith`
+- `GET/POST /api/movies*` — постепенная миграция на `movies-service` по фиче-флагам
+- `GET/POST /api/events*` — проксирование в `events-service` (для единообразия)
+
+Флаги:
+- `GRADUAL_MIGRATION` (true/false) — включает/выключает постепенную миграцию
+- `MOVIES_MIGRATION_PERCENT` (0..100) — процент трафика на `movies-service`
+
+Обработка ошибок:
+- при недоступности upstream возвращается `502` и JSON `{"error":"upstream unavailable"}`
+
+### Проверка (Docker Compose)
+Запуск:
+docker compose up -d --build
+
+Ручные проверки:
+
+curl http://localhost:8000/health
+curl http://localhost:8000/api/users
+curl http://localhost:8000/api/movies
+
+Тесты Postman/Newman (Docker):
+
+Важно: тесты должны выполняться внутри docker network, иначе будет ENOTFOUND monolith.
+
+docker build -t cinemaabyss-api-tests ./tests/postman
+docker run --rm --network=cinemaabyss-network cinemaabyss-api-tests
+
+Проверка постепенного перехода:
+Изменить MOVIES_MIGRATION_PERCENT в docker-compose.yml (например 0 / 50 / 100)
+
+Перезапустить proxy:
+docker compose up -d --build proxy-service
+
+Повторить:
+curl http://localhost:8000/api/movies
+
+Скриншоты: см. docs/screenshots/
+ (docker compose up + итог newman).
+
+ ### Исправление замечания ревьюера по MOVIES_MIGRATION_PERCENT
+
+Замечание: при `MOVIES_MIGRATION_PERCENT=50` весь трафик уходил только в новый сервис.
+
+Причина: в среде Docker/Codespaces client IP для всех запросов одинаковый (NAT), а распределение было детерминированным по `clientIP + path`, поэтому все запросы попадали в один bucket.
+
+Исправление: обновил алгоритм в `src/microservices/proxy/main.go`:
+- если есть `id` в query → детерминированно по `id` (стабильно)
+- иначе → per-request распределение через `rand.Intn(100)`
+
+Проверка:
+1) В `docker-compose.yml` выставить `GRADUAL_MIGRATION=true` и `MOVIES_MIGRATION_PERCENT=50`
+2) Пересобрать proxy:
+
+docker compose up -d --build proxy-service
+
+Скриншоты: см. docs/screenshots/ скрины 12 и 13 - при значении MOVIES_MIGRATION_PERCENT=50 - в логах информация и в старом и в новом сервисе.
 
 ### 2. Kafka
  Вам как архитектуру нужно также проверить гипотезу насколько просто реализовать применение Kafka в данной архитектуре.
@@ -59,13 +126,43 @@
 Необходимые тесты для проверки этого API вызываются при запуске npm run test:local из папки tests/postman 
 Приложите скриншот тестов и скриншот состояния топиков Kafka из UI http://localhost:8090 
 
+##Что сделано
+
+Реализован events-service в ./src/microservices/events:
+GET /api/events/health → {"status": true}
+POST /api/events/movie → пишет событие в Kafka (topic movie-events) и возвращает {"status":"success"}
+POST /api/events/user → topic user-events
+POST /api/events/payment → topic payment-events
+
+Внутри сервиса запущены consumer’ы, которые читают события и логируют обработку.
+
+Kafka UI доступен на:
+http://localhost:8090
+
+Проверка (Docker)
+docker compose up -d --build
+
+Тесты Postman/Newman (Docker):
+docker build -t cinemaabyss-api-tests ./tests/postman
+docker run --rm --network=cinemaabyss-network cinemaabyss-api-tests
+
+Скриншоты: см. docs/screenshots/
+Postman/Newman (успешные тесты)
+
+Kafka UI (видны топики movie-events/user-events/payment-events)
+См. docs/screenshots/
+
+##Типовая ошибка Kafka ClusterId
+
+Kafka (CrashLoopBackOff / InconsistentClusterIdException): при переустановках в PVC Kafka/Zookeeper иногда остаётся старый clusterId, из-за чего kafka-0 падает с InconsistentClusterIdException.
+Для восстановления стенда сбрасываю state Kafka (удаляю PVC kafka-data и zookeeper-data) и пересоздаю ресурсы Kafka; PVC Postgres не трогаю.
+
 # Задание 3
 
 Команда начала переезд в Kubernetes для лучшего масштабирования и повышения надежности. 
 Вам, как архитектору осталось самое сложное:
  - реализовать CI/CD для сборки прокси сервиса
  - реализовать необходимые конфигурационные файлы для переключения трафика.
-
 
 ### CI/CD
 
@@ -109,6 +206,16 @@ jobs:
 Как только сборка отработает и в github registry появятся ваши образы, можно переходить к блоку настройки Kubernetes
 Успешным результатом данного шага является "зеленая" сборка и "зеленые" тесты
 
+Что сделано
+
+В .github/workflows/docker-build-push.yml:
+- добавлена сборка и push образов proxy-service и events-service в GHCR
+- workflow запускается при push в нужные ветки/paths (и вручную через workflow_dispatch)
+- для успешного push использован PAT в секрете GHCR_TOKEN (write:packages), т.к. GITHUB_TOKEN выдавал write_package ошибку
+
+Результат: успешный (зелёный) workflow и опубликованные образы в GHCR.
+Скриншоты: см. docs/screenshots/
+ (зелёный Actions run / список образов в GHCR).
 
 ### Proxy в Kubernetes
 
@@ -275,6 +382,82 @@ cat .docker/config.json | base64
 #### Шаг 3
 Добавьте сюда скриншота вывода при вызове https://cinemaabyss.example.com/api/movies и  скриншот вывода event-service после вызова тестов.
 
+#### ЧТО СДЕЛАНО
+
+Шаг 2 — Деплой manifests
+
+Порядок применения манифестов:
+kubectl apply -f src/kubernetes/namespace.yaml
+
+kubectl apply -f src/kubernetes/configmap.yaml
+kubectl apply -f src/kubernetes/secret.yaml
+kubectl apply -f src/kubernetes/postgres-init-configmap.yaml
+
+kubectl apply -f src/kubernetes/postgres.yaml
+kubectl apply -f src/kubernetes/kafka/kafka.yaml
+
+kubectl apply -f src/kubernetes/monolith.yaml
+kubectl apply -f src/kubernetes/movies-service.yaml
+kubectl apply -f src/kubernetes/events-service.yaml
+kubectl apply -f src/kubernetes/proxy-service.yaml
+
+kubectl apply -f src/kubernetes/ingress.yaml
+
+
+Проверка:
+kubectl -n cinemaabyss get pods
+
+
+Скрин: см. docs/screenshots/
+ (k8s pods running).
+
+Ingress и проверка домена
+Вариант (minikube, как в задании)
+
+Включить ingress:
+minikube addons enable ingress
+kubectl apply -f src/kubernetes/ingress.yaml
+
+Добавить в /etc/hosts:
+127.0.0.1 cinemaabyss.example.com
+
+Запустить:
+minikube tunnel
+
+Вариант (Codespaces / kind)
+Тесты ходят в http://cinemaabyss.example.com на 80, поэтому использую port-forward на 80:
+sudo KUBECONFIG=$HOME/.kube/config kubectl -n ingress-nginx port-forward svc/ingress-nginx-controller 80:80
+
+Проверка:
+curl -H "Host: cinemaabyss.example.com" http://cinemaabyss.example.com/api/movies
+curl -H "Host: cinemaabyss.example.com" http://cinemaabyss.example.com/api/events/health
+
+Скриншоты: см. docs/screenshots/
+ (curl movies + events health).
+
+Тесты Kubernetes
+cd tests/postman
+npm install
+npm run test:kubernetes
+
+Скриншоты:
+итог Newman (0 failed)
+логи events-service после тестов (видно обработку событий)
+См. docs/screenshots/
+
+### CI/CD (Build & Push images)
+
+Исправлен Workflow: `.github/workflows/docker-build-push.yml`
+
+- На `pull_request` в `main` выполняется сборка образов (build) — чтобы джоба была видна во вкладке **Checks** PR.
+- На `push` в `main` (и `release`) выполняется сборка и публикация образов (push) в GHCR.
+- Публикация в GHCR выполняется через секрет `GHCR_TOKEN`.
+
+Проверка: на PR во вкладке **Checks** отображается джоба `Docker Build and Push / build-and-push`.
+
+Скриншоты:
+Добавлен скриншот того что job есть в checks и она выполняется корректно (скрин 14).
+
 
 # Задание 4
 Для простоты дальнейшего обновления и развертывания вам как архитектуру необходимо так же реализовать helm-чарты для прокси-сервиса и проверить работу 
@@ -356,3 +539,39 @@ https://cinemaabyss.example.com/api/movies
 kubectl delete all --all -n cinemaabyss
 kubectl delete namespace cinemaabyss
 ```
+###Что сделано
+
+В src/kubernetes/helm:
+
+- обновлён values.yaml на мои GHCR images (monolith/movies/proxy/events)
+- заполнены шаблоны templates/services/*.yaml на основе рабочих manifests
+- исправлены URL сервисов в configmap (proxy ходит на monolith:8080 и movies-service:8081)
+- dockerconfigsecret.yaml в Helm сделан опциональным (секреты не хранятся в репозитории; по умолчанию отключён)
+
+Установка Helm 
+helm uninstall cinemaabyss -n cinemaabyss --ignore-not-found
+kubectl delete namespace cinemaabyss --ignore-not-found
+kubectl create namespace cinemaabyss
+
+helm install cinemaabyss ./src/kubernetes/helm -n cinemaabyss
+kubectl -n cinemaabyss get pods
+
+Если образы private, перед установкой создаётся pull secret (но я сделал все public):
+
+kubectl -n cinemaabyss create secret generic dockerconfigjson \
+  --from-file=.dockerconfigjson=$HOME/.docker/config.json \
+  --type=kubernetes.io/dockerconfigjson
+
+Проверка после Helm (через ingress):
+curl -H "Host: cinemaabyss.example.com" http://cinemaabyss.example.com/api/movies
+curl -H "Host: cinemaabyss.example.com" http://cinemaabyss.example.com/api/events/health
+
+Скриншоты: см. docs/screenshots/
+ (helm install, pods, curl).
+
+!Типовая ошибка Kafka ClusterId (Helm/K8s)
+Если Kafka падает с InconsistentClusterIdException, сбросить состояние Kafka/Zookeeper (PVC) и пересоздать Kafka:
+
+kubectl -n cinemaabyss delete pvc kafka-data zookeeper-data
+kubectl -n cinemaabyss apply -f src/kubernetes/kafka/kafka.yaml
+kubectl -n cinemaabyss rollout restart deploy/events-service

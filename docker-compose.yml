@@ -57,12 +57,20 @@ services:
       dockerfile: Dockerfile
     container_name: cinemaabyss-monolith
     depends_on:
-      - postgres
+    #  - postgres
+      postgres:
+        condition: service_healthy
+    restart: on-failure
     ports:
       - "8080:8080"
     environment:
       PORT: 8080
       DB_CONNECTION_STRING: postgres://postgres:postgres_password@postgres:5432/cinemaabyss?sslmode=disable
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - cinemaabyss-network
 
@@ -73,12 +81,25 @@ services:
       dockerfile: Dockerfile
     container_name: cinemaabyss-movies-service
     depends_on:
-      - postgres
+    #  - postgres
+      postgres:
+        condition: service_healthy
+    restart: on-failure
     ports:
       - "8081:8081"
     environment:
       PORT: 8081
       DB_CONNECTION_STRING: postgres://postgres:postgres_password@postgres:5432/cinemaabyss?sslmode=disable
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8081/api/movies/health >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    #healthcheck:
+    #  test: ["CMD-SHELL", "wget -q -O- http://localhost:8080/health >/dev/null 2>&1 || exit 1"]
+    #  interval: 10s
+    #  timeout: 5s
+    #  retries: 5
     networks:
       - cinemaabyss-network
 
@@ -109,6 +130,12 @@ services:
       - monolith
       - movies-service
       - events-service
+    #monolith:
+    #  condition: service_healthy
+    #movies-service:
+    #  condition: service_healthy
+    #events-service:
+    #  condition: service_started  
     ports:
       - "8000:8000"
     environment:
