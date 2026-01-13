@@ -445,6 +445,19 @@ npm run test:kubernetes
 логи events-service после тестов (видно обработку событий)
 См. docs/screenshots/
 
+### CI/CD (Build & Push images)
+
+Исправлен Workflow: `.github/workflows/docker-build-push.yml`
+
+- На `pull_request` в `main` выполняется сборка образов (build) — чтобы джоба была видна во вкладке **Checks** PR.
+- На `push` в `main` (и `release`) выполняется сборка и публикация образов (push) в GHCR.
+- Публикация в GHCR выполняется через секрет `GHCR_TOKEN`.
+
+Проверка: на PR во вкладке **Checks** отображается джоба `Docker Build and Push / build-and-push`.
+
+Скриншоты:
+Добавлен скриншот того что job есть в checks и она выполняется корректно (скрин 14).
+
 
 # Задание 4
 Для простоты дальнейшего обновления и развертывания вам как архитектуру необходимо так же реализовать helm-чарты для прокси-сервиса и проверить работу 
